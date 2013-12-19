@@ -2,6 +2,7 @@
 #include <png.h>
 #include <zlib.h>
 #include <errno.h>
+#include <getopt.h>
 
 using namespace std;
 
@@ -14,6 +15,7 @@ static void png_add_inserts_version_info() {
 
 static void usage(void) {
     png_add_inserts_version_info();
+    cout << " Usage is png_add_inserts input_file output_file -w geometry_spec -w geometry_spec ..." << endl;
 } /* usage */
 
 static void process_png(png_struct *png, png_info_struct *info) {
@@ -58,8 +60,29 @@ int main(int argc, char* argv[]) {
     FILE *fp;
     int rc =0;
 
+    static struct option long_options[] = {
+        { "insert-spec", required_argument, 0, 'w'},
+        { 0, 0, 0, 0 },
+    }; /* long_options */
+    int option_index = 0;
+
+    while (true) {
+        rc=getopt_long(argc, argv, "-w", long_options, &option_index);
+        if (rc == -1) {
+            break;
+        } else {
+            switch(rc) {
+            case 'w':
+                /* add the option to the list of insertion points */
+                break;
+            default:
+                usage();
+                return -1;
+            }
+        } /* endif */
+    } /* endwhile */
     cout << argv[0] << " Starting" << endl;
-    if (argc < 2) {
+    if (argc < 4) {
         usage();
         return 1;
     } /* endif */
