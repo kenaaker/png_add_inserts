@@ -20,22 +20,52 @@ static void usage(void) {
     cout << " Usage is png_add_inserts input_file output_file -w geometry_spec -w geometry_spec ..." << endl;
 } /* usage */
 
-static void process_png(png_struct *png, png_info_struct *info) {
-    cout << " Got a png file into memory" << endl;
+static void process_png(png_struct *read_png, png_info_struct *read_png_info, char *out_file_name) {
+    FILE *write_fp;
+    png_struct *write_png;
+    png_info_struct *write_png_info; /* png info for chunks before the image */
+    png_info_struct *write_end_info; /* png info for chunks after the image */
     string text_key;
     string text_value;
     int text_chunks;
     int num_text;
     png_text *text;
+    int rc;
 
-    text_chunks = png_get_text(png, info, &text, &num_text);
-    if (text_chunks > 0) {
-        cout << "This file has " << text_chunks << " text chunks in it." << endl;
-        for (int i=0; i<text_chunks; ++i) {
-            cout << " Text keyword is " << text[i].key << " text value is " << text[i].text << endl;
-        } /* endfor */
+    cout << " Got a png file into memory" << endl;
+
+    if ((write_fp= fopen(out_file_name, "wb")) == NULL) {
+        cout << " Couldn't open output file " << out_file_name << endl;
+        rc = -EIO;
+    } else {
+        write_png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+        if (write_png == NULL) {
+            rc = -ENOMEM;
+        } else {
+            write_png_info = png_create_info_struct(write_png);
+            if (write_png_info == NULL) {
+                rc = -ENOMEM;
+            } else {
+                write_end_info = png_create_info_struct(write_png);
+                if (write_end_info == NULL) {
+                    rc = -ENOMEM;
+                } else {
+                    png_init_io(write_png, write_fp);
+                    text_chunks = png_get_text(read_png, read_png_info, &text, &num_text);
+                    if (text_chunks > 0) {
+                        cout << "This file has " << text_chunks << " text chunks in it." << endl;
+                        for (int i=0; i<text_chunks; ++i) {
+                            cout << " Text keyword is " << text[i].key << " text value is " << text[i].text << endl;
+                        } /* endfor */
+                    } /* endif */
+                    png_destroy_info_struct(write_png, &write_end_info);
+                } /* endif */
+                png_destroy_info_struct(write_png, &write_png_info);
+            } /* endif */
+            png_destroy_read_struct(&write_png, png_infopp_NULL, png_infopp_NULL);
+        } /* endif */
+        fclose(write_fp);
     } /* endif */
-
 } /* process_png */
 
 static bool is_png_file(FILE *fp, int *bytes_read) {
@@ -64,7 +94,6 @@ int main(int argc, char* argv[]) {
     FILE *fp;
     int rc =0;
     int opt =0;
-//    string insert_regex("[0-9]+\\x[0-9]+\\+[0-9]+\\/?[0-9]+?");
     string insert_regex("[0-9]+\\x[0-9]+\\+[0-9]+\\+[0-9]+($|/[0-9]+$)");
     regex_t re;
     regmatch_t rm;
@@ -86,11 +115,7 @@ int main(int argc, char* argv[]) {
         switch(opt) {
         case 'w':
             /* add the option to the list of insertion points */
-            cout << " Found -w option, argument is \"" << optarg << "\"" << endl;
-            if (regexec(&re, optarg, 1, &rm, 0) == 0) {
-                cout << " This item is Ok " << optarg << endl;
-                cout << "match " <<  string(optarg+rm.rm_so, optarg+rm.rm_eo) << endl;
-            } else {
+            if (regexec(&re, optarg, 1, &rm, 0) != 0) {
                 cout << " This item is not Ok " << optarg << endl;
                 cout << "match " <<  string(optarg+rm.rm_so, optarg+rm.rm_eo) << endl;
             }
@@ -103,7 +128,7 @@ int main(int argc, char* argv[]) {
         } /* endswitch */
     } /* endwhile */
 
-    if (argc < 4) {
+    if ((argc-optind) < 2) {
         usage();
         return 1;
     } /* endif */
@@ -128,7 +153,7 @@ int main(int argc, char* argv[]) {
                     } else {
                         png_init_io(png, fp);
                         png_read_png(png, png_info, PNG_TRANSFORM_IDENTITY, png_voidp_NULL);
-                        process_png(png, png_info);
+                        process_png(png, png_info, argv[optind+1]);
                         png_destroy_info_struct(png, &end_info);
                     } /* endif */
                     png_destroy_info_struct(png, &png_info);
@@ -138,11 +163,6 @@ int main(int argc, char* argv[]) {
         } /* endif */
         fclose(fp);
     } /* endif */
-    cout << "insert items ";
-    for (list<string>::iterator li=insert_list.begin(); li!=insert_list.end(); ++li) {
-        cout << *li << " ";
-    }
-    cout << endl;
     cout << argv[0] << " Ending return code =" << rc << endl;
     return rc;
 }
