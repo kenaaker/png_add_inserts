@@ -3,6 +3,8 @@
 #include <zlib.h>
 #include <errno.h>
 #include <getopt.h>
+#include <list>
+#include <regex.h>
 
 using namespace std;
 
@@ -52,6 +54,8 @@ static bool is_png_file(FILE *fp, int *bytes_read) {
     return rc;
 } /* is_png_file */
 
+static list<string> insert_list;
+
 int main(int argc, char* argv[]) {
     unsigned char file_signature[8];
     png_struct *png;
@@ -59,34 +63,51 @@ int main(int argc, char* argv[]) {
     png_info_struct *end_info; /* png info for chunks after the image */
     FILE *fp;
     int rc =0;
+    int opt =0;
+//    string insert_regex("[0-9]+\\x[0-9]+\\+[0-9]+\\/?[0-9]+?");
+    string insert_regex("[0-9]+\\x[0-9]+\\+[0-9]+\\+[0-9]+($|/[0-9]+$)");
+    regex_t re;
+    regmatch_t rm;
 
     static struct option long_options[] = {
-        { "insert-spec", required_argument, 0, 'w'},
+        { "insert-spec", required_argument, 0, 0},
         { 0, 0, 0, 0 },
     }; /* long_options */
-    int option_index = 0;
+    int option_index = 1;
 
-    while (true) {
-        rc=getopt_long(argc, argv, "-w", long_options, &option_index);
-        if (rc == -1) {
-            break;
-        } else {
-            switch(rc) {
-            case 'w':
-                /* add the option to the list of insertion points */
-                break;
-            default:
-                usage();
-                return -1;
-            }
-        } /* endif */
-    } /* endwhile */
     cout << argv[0] << " Starting" << endl;
+
+    if (regcomp(&re, insert_regex.c_str(), REG_EXTENDED) != 0) {
+        cout << " Regular expression compile failed. Bad pattern." << endl;
+        exit(-EINVAL);
+    } /* endif */
+
+    while ((opt = getopt_long(argc, argv, "w:", long_options, &option_index)) != -1) {
+        switch(opt) {
+        case 'w':
+            /* add the option to the list of insertion points */
+            cout << " Found -w option, argument is \"" << optarg << "\"" << endl;
+            if (regexec(&re, optarg, 1, &rm, 0) == 0) {
+                cout << " This item is Ok " << optarg << endl;
+                cout << "match " <<  string(optarg+rm.rm_so, optarg+rm.rm_eo) << endl;
+            } else {
+                cout << " This item is not Ok " << optarg << endl;
+                cout << "match " <<  string(optarg+rm.rm_so, optarg+rm.rm_eo) << endl;
+            }
+
+            insert_list.push_back(string(optarg));
+            break;
+        default:
+            usage();
+            return -1;
+        } /* endswitch */
+    } /* endwhile */
+
     if (argc < 4) {
         usage();
         return 1;
     } /* endif */
-    if ((fp= fopen(argv[1], "rb")) == NULL) {
+    if ((fp= fopen(argv[optind], "rb")) == NULL) {
         rc = -EIO;
     } else {
         int bytes_read;
@@ -117,6 +138,11 @@ int main(int argc, char* argv[]) {
         } /* endif */
         fclose(fp);
     } /* endif */
+    cout << "insert items ";
+    for (list<string>::iterator li=insert_list.begin(); li!=insert_list.end(); ++li) {
+        cout << *li << " ";
+    }
+    cout << endl;
     cout << argv[0] << " Ending return code =" << rc << endl;
     return rc;
 }
