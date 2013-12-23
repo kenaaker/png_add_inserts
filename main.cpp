@@ -22,7 +22,7 @@ static void usage(void) {
 } /* usage */
 
 /* Put inserts into png text chunks. inserts is assumed sorted and unique */
-static void process_png(png_struct *read_png, png_info_struct *read_png_info, string out_file_name,
+static int process_png(png_struct *read_png, png_info_struct *read_png_info, string out_file_name,
                         list<string> inserts) {
     FILE *write_fp;
     png_struct *write_png;
@@ -32,8 +32,8 @@ static void process_png(png_struct *read_png, png_info_struct *read_png_info, st
     int num_text;
     png_text *text;
     png_text insert_text[1];
-    int rc;
     list<string> current_inserts;
+    int rc;
 
     if ((write_fp= fopen(out_file_name.c_str(), "wb")) == NULL) {
         cout << " Couldn't open output file " << out_file_name << endl;
@@ -54,8 +54,7 @@ static void process_png(png_struct *read_png, png_info_struct *read_png_info, st
             for (list<string>::iterator it=inserts.begin(); it!=inserts.end(); ++it) {
                 list<string>::iterator ci;
                 ci = find(current_inserts.begin(), current_inserts.end(), *it);
-                if (ci != current_inserts.end()) {
-                } else {
+                if (ci == current_inserts.end()) {
                     char *cstr = new char[it->length()+1];
                     strncpy(cstr, it->c_str(), it->length());
                     insert_text[0].compression = PNG_TEXT_COMPRESSION_NONE;
@@ -69,6 +68,7 @@ static void process_png(png_struct *read_png, png_info_struct *read_png_info, st
         } /* endif */
         fclose(write_fp);
     } /* endif */
+    return rc;
 } /* process_png */
 
 static bool is_png_file(FILE *fp, int *bytes_read) {
@@ -88,7 +88,6 @@ static bool is_png_file(FILE *fp, int *bytes_read) {
 } /* is_png_file */
 
 int process_png_inserts(string in_file, string out_file, list<string>insert_list) {
-    unsigned char file_signature[8];
     png_struct *png;
     png_info_struct *png_info; /* png info for chunks before the image */
     png_info_struct *end_info; /* png info for chunks after the image */
@@ -136,8 +135,6 @@ static void display_png_texts(png_struct *read_png, png_info_struct *read_png_in
     int text_chunks;
     int num_text;
     png_text *text;
-    png_text insert_text[1];
-    int rc;
     list<string> current_inserts;
     text_chunks = png_get_text(read_png, read_png_info, &text, &num_text);
     cout << "This file has " << text_chunks << " text chunks in it." << endl;
@@ -148,7 +145,6 @@ static void display_png_texts(png_struct *read_png, png_info_struct *read_png_in
 } /* display_png_texts */
 
 static int display_png_inserts(string in_file) {
-    unsigned char file_signature[8];
     png_struct *png;
     png_info_struct *png_info; /* png info for chunks before the image */
     png_info_struct *end_info; /* png info for chunks after the image */
