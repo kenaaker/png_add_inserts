@@ -217,7 +217,7 @@ int main(int argc, char* argv[]) {
             case 'w':
                 /* add the option to the list of insertion points */
                 if (regexec(&re, optarg, 1, &rm, 0) != 0) {
-                    cout << " This insert item is not Ok, should be {number}x{number}+{x offset}+{y offset}/{rotation angle}.." << optarg << endl;
+                    cout << " This insert item (" << optarg << ") is not Ok, should be {number}x{number}+{x offset}+{y offset}/{rotation angle}. " << endl;
                     p_opt = do_nothing;
                     exit(-EINVAL);
                 }
