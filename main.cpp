@@ -137,10 +137,11 @@ static void display_png_texts(png_struct *read_png, png_info_struct *read_png_in
     png_text *text;
     list<string> current_inserts;
     text_chunks = png_get_text(read_png, read_png_info, &text, &num_text);
-    cout << "This file has " << text_chunks << " text chunks in it." << endl;
     for (int i=0; i<text_chunks; ++i) {
         string ct = text[i].text;
-        cout << " Text keyword is " << text[i].key << " text value is " << ct << endl;
+        if (text[i].key == string("insert_loc")) {
+            cout << text[i].key << " = \"" << ct << "\"" << endl;
+        } /* endif */
     } /* endfor */
 } /* display_png_texts */
 
