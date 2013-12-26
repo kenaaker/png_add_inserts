@@ -135,7 +135,6 @@ static void display_png_texts(png_struct *read_png, png_info_struct *read_png_in
     int text_chunks;
     int num_text;
     png_text *text;
-    list<string> current_inserts;
     text_chunks = png_get_text(read_png, read_png_info, &text, &num_text);
     for (int i=0; i<text_chunks; ++i) {
         string ct = text[i].text;
@@ -184,11 +183,11 @@ static int display_png_inserts(string in_file) {
         fclose(fp);
     } /* endif */
     return rc;
-} /* process_png_inserts */
+} /* display_png_inserts */
 
 int main(int argc, char* argv[]) {
-    int rc =0;
-    int opt =0;
+    int rc = 0;
+    int opt = 0;
     string insert_regex("[0-9]+\\x[0-9]+\\+[0-9]+\\+[0-9]+($|/[0-9]+$)");
     regex_t re;
     regmatch_t rm;
@@ -215,22 +214,22 @@ int main(int argc, char* argv[]) {
                 /* display the list of insertion points from the file */
                 p_opt = display_inserts;
             break;
-            case 'w':
-                /* add the option to the list of insertion points */
-                if (regexec(&re, optarg, 1, &rm, 0) != 0) {
-                    cout << " This insert item (" << optarg << ") is not Ok, should be {number}x{number}+{x offset}+{y offset}/{rotation angle}. " << endl;
-                    p_opt = do_nothing;
-                    exit(-EINVAL);
-                }
-                ci = find(insert_list.begin(), insert_list.end(), string(optarg));
-                if (ci != insert_list.end()) {
-                    cout << " This insert item \"" << optarg << "\" is a duplicate, check your list of -w arguments.." << endl;
-                    p_opt = do_nothing;
-                    exit(-EINVAL);
-                }
-                insert_list.push_back(string(optarg));
-                p_opt = add_inserts;
-                break;
+        case 'w':
+            /* add the option to the list of insertion points */
+            if (regexec(&re, optarg, 1, &rm, 0) != 0) {
+                cout << " This insert item (" << optarg << ") is not Ok, should be {number}x{number}+{x offset}+{y offset}/{rotation angle}. " << endl;
+                p_opt = do_nothing;
+                exit(-EINVAL);
+            }
+            ci = find(insert_list.begin(), insert_list.end(), string(optarg));
+            if (ci != insert_list.end()) {
+                cout << " This insert item \"" << optarg << "\" is a duplicate, check your list of -w arguments.." << endl;
+                p_opt = do_nothing;
+                exit(-EINVAL);
+            }
+            insert_list.push_back(string(optarg));
+            p_opt = add_inserts;
+            break;
         default:
             usage();
             return -1;
