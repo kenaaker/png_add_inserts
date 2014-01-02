@@ -6,6 +6,7 @@
 #include <list>
 #include <regex.h>
 #include <algorithm>
+#include <sstream>
 
 using namespace std;
 
@@ -20,6 +21,21 @@ static void usage(void) {
     png_add_inserts_version_info();
     cout << " Usage is png_add_inserts input_file output_file -w geometry_spec -w geometry_spec ..." << endl;
 } /* usage */
+
+static inline int string_to_int(string s)
+{
+    stringstream ss(s);
+    int x;
+    ss >> x;
+    return x;
+}
+
+static inline string int_to_string(int i)
+{
+    stringstream ss;
+    ss << i;
+    return ss.str();
+}
 
 /* Put inserts into png text chunks. inserts is assumed sorted and unique */
 static int process_png(png_struct *read_png, png_info_struct *read_png_info, string out_file_name,
@@ -50,15 +66,21 @@ static int process_png(png_struct *read_png, png_info_struct *read_png_info, str
             } /* endfor */
             current_inserts.sort();
             current_inserts.unique();
-
-            for (list<string>::iterator it=inserts.begin(); it!=inserts.end(); ++it) {
+            int list_index = 1;
+            for (list<string>::iterator it=inserts.begin(); it!=inserts.end(); ++it, ++list_index) {
                 list<string>::iterator ci;
+                string loc_keyword_string;
                 ci = find(current_inserts.begin(), current_inserts.end(), *it);
                 if (ci == current_inserts.end()) {
+                    loc_keyword_string = string("insert_loc_") + int_to_string(list_index);
                     char *cstr = new char[it->length()+1];
+                    char *locstr = new char[loc_keyword_string.length()+1];
+                    memset(cstr, 0, it->length()+1);
+                    memset(locstr, 0, loc_keyword_string.length()+1);
                     strncpy(cstr, it->c_str(), it->length());
+                    strncpy(locstr, loc_keyword_string.c_str(), loc_keyword_string.length());
                     insert_text[0].compression = PNG_TEXT_COMPRESSION_NONE;
-                    insert_text[0].key = (char *)"insert_loc";
+                    insert_text[0].key = locstr;
                     insert_text[0].text = cstr;
                     png_set_text(write_png, read_png_info, insert_text, 1);
                 } /* endif */
